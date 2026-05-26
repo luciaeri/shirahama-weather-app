@@ -1,0 +1,916 @@
+/* ==========================================================================
+   旧南紀白浜空港 局所天気予報アプリ - コアデザインシステム
+   Style sheet: style.css (Vanilla CSS)
+   ========================================================================== */
+
+/* --- デザインシステムトークン (CSS 変数) --- */
+:root {
+    --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-heading: 'Outfit', 'Inter', var(--font-primary);
+    
+    /* カラーパレット (ダークネイビー・ネオンテーマ) */
+    --bg-base: #060913;
+    --bg-app-gradient: linear-gradient(135deg, #060a17 0%, #0d152d 50%, #050812 100%);
+    
+    /* ガラスモルフィズム用カラー */
+    --glass-bg: rgba(13, 22, 45, 0.55);
+    --glass-bg-hover: rgba(20, 32, 64, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-border-focus: rgba(0, 229, 255, 0.3);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    
+    /* ネオンカラー */
+    --neon-blue: #00f0ff;
+    --neon-blue-glow: rgba(0, 240, 255, 0.3);
+    
+    --neon-green: #39ff14;
+    --neon-green-glow: rgba(57, 255, 20, 0.3);
+    
+    --neon-amber: #ffaa00;
+    --neon-amber-glow: rgba(255, 170, 0, 0.3);
+    
+    --neon-red: #ff3366;
+    --neon-red-glow: rgba(255, 51, 102, 0.3);
+    
+    /* テキストカラー */
+    --text-primary: #f0f4f8;
+    --text-secondary: #8c9cb5;
+    --text-muted: #5d6d84;
+    
+    /* その他ユーティリティ */
+    --radius-lg: 16px;
+    --radius-md: 10px;
+    --radius-sm: 6px;
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- 初期化・リセット --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-primary);
+    background-color: var(--bg-base);
+    background-image: var(--bg-app-gradient);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+    line-height: 1.5;
+}
+
+/* 天候アニメーション用キャンバス */
+#weather-effect-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* --- レイアウトコンテナ --- */
+.app-container {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* --- ヘッダー --- */
+.app-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    padding: 20px 24px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--glass-shadow);
+}
+
+.header-main {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.logo-icon-wrapper {
+    background: rgba(0, 240, 255, 0.1);
+    border: 1px solid rgba(0, 240, 255, 0.25);
+    border-radius: var(--radius-md);
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 15px var(--neon-blue-glow);
+}
+
+.logo-icon {
+    width: 28px;
+    height: 28px;
+    color: var(--neon-blue);
+}
+
+.logo-area h1 {
+    font-family: var(--font-heading);
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    background: linear-gradient(90deg, #fff, var(--neon-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.system-status {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 4px;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(57, 255, 20, 0.08);
+    border: 1px solid rgba(57, 255, 20, 0.25);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    color: var(--neon-green);
+    font-weight: 600;
+}
+
+.status-badge.live {
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.15);
+}
+
+.pulse-dot {
+    width: 6px;
+    height: 6px;
+    background-color: var(--neon-green);
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 1.5s infinite;
+}
+
+.geo-info {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.header-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.live-clock {
+    font-family: monospace;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ボタンデザイン */
+.btn-primary {
+    background: linear-gradient(135deg, rgba(0, 240, 255, 0.2) 0%, rgba(0, 240, 255, 0.05) 100%);
+    border: 1px solid var(--neon-blue);
+    color: #fff;
+    font-family: var(--font-primary);
+    font-weight: 500;
+    font-size: 0.85rem;
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: var(--transition-smooth);
+    box-shadow: 0 0 10px var(--neon-blue-glow);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, rgba(0, 240, 255, 0.3) 0%, rgba(0, 240, 255, 0.1) 100%);
+    box-shadow: 0 0 18px rgba(0, 240, 255, 0.5);
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(1px);
+}
+
+/* --- ダッシュボードグリッド --- */
+.dashboard-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* --- グラスカード共通 --- */
+.card.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--glass-shadow);
+    padding: 20px;
+    transition: var(--transition-smooth);
+}
+
+.card.glass-card:hover {
+    background: var(--glass-bg-hover);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* --- 天気実況カード (Row 1) --- */
+.overview-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.overview-cards .card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 140px;
+    position: relative;
+    overflow: hidden;
+}
+
+.overview-cards .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+}
+
+.card-temp::before { background: linear-gradient(90deg, #ffaa00, #ff3366); }
+.card-wind::before { background: linear-gradient(90deg, #00f0ff, #39ff14); }
+.card-precip::before { background: linear-gradient(90deg, #0077ff, #00f0ff); }
+.card-drone::before { background: linear-gradient(90deg, #7b2cbf, #ff3366); }
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.card-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+}
+
+.card-header i {
+    width: 20px;
+    height: 20px;
+}
+
+.icon-temp { color: var(--neon-amber); }
+.icon-wind { color: var(--neon-blue); }
+.icon-precip { color: #00aaff; }
+.icon-drone { color: var(--neon-green); }
+
+.value-display {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin: 8px 0;
+}
+
+.main-val {
+    font-family: var(--font-heading);
+    font-size: 2.2rem;
+    font-weight: 700;
+    letter-spacing: -1px;
+}
+
+.unit {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.card-footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.card-footer-stacked {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stacked-item {
+    display: flex;
+    justify-content: space-between;
+}
+
+.wind-direction-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.wind-arrow {
+    width: 14px;
+    height: 14px;
+    color: var(--neon-blue);
+    transform: rotate(0deg);
+    transition: transform 0.5s ease;
+}
+
+.sub-val {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.alert-val {
+    color: var(--neon-amber);
+}
+
+/* ドローンの安全バッジ */
+.drone-safety-badge {
+    display: inline-flex;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.9rem;
+    width: fit-content;
+    margin: 8px 0;
+    letter-spacing: 0.5px;
+}
+
+.drone-safety-badge.safe {
+    background: rgba(57, 255, 20, 0.12);
+    border: 1px solid rgba(57, 255, 20, 0.3);
+    color: var(--neon-green);
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.1);
+}
+
+.drone-safety-badge.caution {
+    background: rgba(255, 170, 0, 0.12);
+    border: 1px solid rgba(255, 170, 0, 0.3);
+    color: var(--neon-amber);
+    box-shadow: 0 0 10px rgba(255, 170, 0, 0.1);
+}
+
+.drone-safety-badge.danger {
+    background: rgba(255, 51, 102, 0.12);
+    border: 1px solid rgba(255, 51, 102, 0.3);
+    color: var(--neon-red);
+    box-shadow: 0 0 10px rgba(255, 51, 102, 0.1);
+}
+
+/* --- ビジュアライザ & グラフグリッド (Row 2) --- */
+.visualizer-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+@media (min-width: 900px) {
+    .visualizer-grid {
+        grid-template-columns: 1.1fr 1.9fr;
+    }
+}
+
+.visualizer-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.title-with-desc h3 {
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.title-with-desc .desc {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+}
+
+.badge#val-surface-condition {
+    background: rgba(0, 240, 255, 0.1);
+    border: 1px solid rgba(0, 240, 255, 0.3);
+    color: var(--neon-blue);
+}
+
+.badge#val-surface-condition.wet {
+    background: rgba(0, 119, 255, 0.15);
+    border: 1px solid rgba(0, 119, 255, 0.4);
+    color: #33a6ff;
+}
+
+/* 滑走路キャンバスコンテナ */
+.runway-visualizer-container {
+    width: 100%;
+    height: 220px;
+    position: relative;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-md);
+    margin: 14px 0;
+    overflow: hidden;
+}
+
+#runway-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.runway-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.stat-box {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    padding: 10px;
+    border-radius: var(--radius-md);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stat-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.stat-value-group {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 2px;
+}
+
+.stat-number {
+    font-family: var(--font-heading);
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.stat-unit {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.stat-sub {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.headwind .stat-number { color: var(--neon-blue); }
+.crosswind .stat-number { color: var(--neon-amber); }
+
+/* --- 予測グラフカード --- */
+.graph-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.graph-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+/* グラフタブスイッチ */
+.graph-tabs {
+    display: flex;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 4px;
+    border-radius: var(--radius-md);
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: var(--font-primary);
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.tab-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.tab-btn.active {
+    color: #fff;
+    background: rgba(0, 240, 255, 0.15);
+    border: 1px solid rgba(0, 240, 255, 0.3);
+    box-shadow: 0 0 8px rgba(0, 240, 255, 0.15);
+}
+
+.chart-container {
+    position: relative;
+    flex-grow: 1;
+    width: 100%;
+    min-height: 280px;
+    max-height: 320px;
+}
+
+/* --- タイムラインスライダー (Row 3) --- */
+.timeline-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.timeline-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.slider-title {
+    font-family: var(--font-heading);
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.selected-time-bubble {
+    font-size: 0.82rem;
+    background: rgba(0, 240, 255, 0.05);
+    border: 1px solid rgba(0, 240, 255, 0.2);
+    padding: 6px 14px;
+    border-radius: 30px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.selected-time-bubble strong {
+    color: var(--neon-blue);
+    font-size: 0.9rem;
+}
+
+.offset-label {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+}
+
+.slider-wrapper {
+    width: 100%;
+    position: relative;
+    padding: 10px 0;
+}
+
+/* スライダーの標準スタイルリセット */
+.custom-range-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+    outline: none;
+    margin: 10px 0 25px 0;
+    transition: var(--transition-smooth);
+}
+
+.custom-range-slider:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* スライダーつまみ (WebKit) */
+.custom-range-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid var(--neon-blue);
+    cursor: pointer;
+    box-shadow: 0 0 12px var(--neon-blue), 0 0 3px rgba(0,0,0,0.5);
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.custom-range-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 16px var(--neon-blue), 0 0 5px rgba(0,0,0,0.5);
+}
+
+/* スライダーつまみ (Mozilla) */
+.custom-range-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid var(--neon-blue);
+    cursor: pointer;
+    box-shadow: 0 0 12px var(--neon-blue), 0 0 3px rgba(0,0,0,0.5);
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.custom-range-slider::-moz-range-thumb:hover {
+    transform: scale(1.2);
+}
+
+.slider-ticks {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+}
+
+.slider-ticks .tick {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+    transition: var(--transition-smooth);
+}
+
+.slider-ticks .tick::before {
+    content: '';
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.slider-ticks .tick.active {
+    color: var(--neon-blue);
+    font-weight: 600;
+}
+
+.slider-ticks .tick.active::before {
+    background: var(--neon-blue);
+    height: 8px;
+    width: 2px;
+}
+
+/* --- 気象解析パネル --- */
+.diagnostics-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.diagnostics-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 12px;
+}
+
+.diagnostic-title {
+    font-family: var(--font-heading);
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.updated-time-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.diagnostics-body {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+@media (min-width: 800px) {
+    .diagnostics-body {
+        grid-template-columns: 1.3fr 1fr;
+    }
+}
+
+.main-alert {
+    display: flex;
+    gap: 16px;
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    padding: 16px;
+    border-radius: var(--radius-md);
+    align-items: flex-start;
+}
+
+.diag-icon-box {
+    background: rgba(0, 240, 255, 0.08);
+    border: 1px solid rgba(0, 240, 255, 0.25);
+    padding: 8px;
+    border-radius: var(--radius-md);
+    color: var(--neon-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.diag-icon-box.level-safe {
+    background: rgba(57, 255, 20, 0.08);
+    border-color: rgba(57, 255, 20, 0.25);
+    color: var(--neon-green);
+}
+
+.diag-icon-box.level-caution {
+    background: rgba(255, 170, 0, 0.08);
+    border-color: rgba(255, 170, 0, 0.25);
+    color: var(--neon-amber);
+}
+
+.diag-icon-box.level-danger {
+    background: rgba(255, 51, 102, 0.08);
+    border-color: rgba(255, 51, 102, 0.25);
+    color: var(--neon-red);
+}
+
+.diag-text h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.diag-text p {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.mini-metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.metric-item {
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.m-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.m-value {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* --- フッター --- */
+.app-footer {
+    text-align: center;
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.app-footer p {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.app-footer .disclaimer {
+    color: var(--text-muted);
+    max-width: 800px;
+    margin: 0 auto;
+    line-height: 1.4;
+}
+
+/* --- キーフレームアニメーション --- */
+@keyframes pulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(57, 255, 20, 0.7);
+    }
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 6px rgba(57, 255, 20, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(57, 255, 20, 0);
+    }
+}
+
+.text-neon {
+    color: var(--neon-blue);
+    filter: drop-shadow(0 0 4px var(--neon-blue-glow));
+}
+
+.inline-icon {
+    width: 14px;
+    height: 14px;
+    vertical-align: middle;
+}
+
+.animate-pulse {
+    animation: diagnostic-pulse 2s infinite ease-in-out;
+}
+
+@keyframes diagnostic-pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; filter: drop-shadow(0 0 3px var(--neon-blue)); }
+}

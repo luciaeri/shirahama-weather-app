@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旧南紀白浜空港 局所的超高性能天気予報 (1分更新/3時間予測)</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Background Canvas for Weather Effects -->
+    <canvas id="weather-effect-canvas"></canvas>
+
+    <div class="app-container">
+        <!-- Header Section -->
+        <header class="app-header">
+            <div class="header-main">
+                <div class="logo-area">
+                    <div class="logo-icon-wrapper">
+                        <i data-lucide="plane-takeoff" class="logo-icon text-neon"></i>
+                    </div>
+                    <div>
+                        <h1>SHIRAHAMA MICRO-WEATHER</h1>
+                        <p class="subtitle">旧南紀白浜空港 (滑走路方位 15/33) 局所気象ダッシュボード</p>
+                    </div>
+                </div>
+                <div class="system-status">
+                    <div class="status-badge live">
+                        <span class="pulse-dot"></span>
+                        <span id="update-mode-text">1分自動更新中</span>
+                    </div>
+                    <div class="geo-info">
+                        <i data-lucide="map-pin" class="inline-icon"></i>
+                        <span>北緯33.6622° 東経135.3621° / 標高90m</span>
+                    </div>
+                </div>
+            </div>
+            <div class="header-meta">
+                <div class="live-clock">
+                    <i data-lucide="clock" class="inline-icon"></i>
+                    <span id="current-time-display">2026-05-26 14:56:34</span>
+                </div>
+                <button id="btn-refresh" class="btn-primary" title="最新データ取得">
+                    <i data-lucide="refresh-cw" id="refresh-icon"></i>
+                    <span>手動更新</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Layout -->
+        <main class="dashboard-grid">
+            
+            <!-- Weather Parameter Cards (Row 1) -->
+            <section class="overview-cards">
+                <!-- Temperature Card -->
+                <div class="card glass-card card-temp">
+                    <div class="card-header">
+                        <span class="card-title">気温・湿度</span>
+                        <i data-lucide="thermometer" class="icon-temp"></i>
+                    </div>
+                    <div class="card-body">
+                        <div class="value-display">
+                            <span id="val-temp" class="main-val">--.-</span>
+                            <span class="unit">°C</span>
+                        </div>
+                        <div class="card-footer">
+                            <span class="sub-label">湿度: <span id="val-humidity">--</span>%</span>
+                            <span class="sub-label">露点: <span id="val-dewpoint">--.-</span>°C</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Wind Card -->
+                <div class="card glass-card card-wind">
+                    <div class="card-header">
+                        <span class="card-title">風向・風速</span>
+                        <i data-lucide="wind" class="icon-wind"></i>
+                    </div>
+                    <div class="card-body">
+                        <div class="value-display">
+                            <span id="val-windspeed" class="main-val">--.-</span>
+                            <span class="unit">m/s</span>
+                        </div>
+                        <div class="wind-direction-wrap">
+                            <i data-lucide="navigation" id="wind-direction-arrow" class="wind-arrow"></i>
+                            <span id="val-winddir-text" class="sub-val">-- (---°)</span>
+                        </div>
+                        <div class="card-footer">
+                            <span class="sub-label alert-val">瞬間最大: <span id="val-windgust">--.-</span> m/s</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Precipitation/Visibility Card -->
+                <div class="card glass-card card-precip">
+                    <div class="card-header">
+                        <span class="card-title">降水・視程</span>
+                        <i data-lucide="cloud-rain" class="icon-precip"></i>
+                    </div>
+                    <div class="card-body">
+                        <div class="value-display">
+                            <span id="val-precip" class="main-val">-.--</span>
+                            <span class="unit">mm/分</span>
+                        </div>
+                        <div class="card-footer-stacked">
+                            <div class="stacked-item">
+                                <span>気圧: <span id="val-pressure">----</span> hPa</span>
+                            </div>
+                            <div class="stacked-item">
+                                <span>滑走路視程 (RVR): <span id="val-rvr">----</span> m</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Drone/Aviation Suitability Card -->
+                <div class="card glass-card card-drone">
+                    <div class="card-header">
+                        <span class="card-title">フライト安全指数</span>
+                        <i data-lucide="shield-alert" id="icon-drone-safety" class="icon-drone"></i>
+                    </div>
+                    <div class="card-body">
+                        <div class="drone-safety-badge" id="val-drone-status-badge">
+                            <span id="val-drone-status">測定中</span>
+                        </div>
+                        <div class="card-footer-stacked">
+                            <div class="stacked-item">
+                                <span>熱上昇気流 (サーマル): <span id="val-thermal">--.-</span> m/s</span>
+                            </div>
+                            <div class="stacked-item">
+                                <span>乱気流レベル: <span id="val-turbulence">--</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Visualizations and Graphs (Row 2) -->
+            <section class="visualizer-grid">
+                <!-- Runway Crosswind Visualizer Card -->
+                <div class="card glass-card visualizer-card">
+                    <div class="card-header">
+                        <div class="title-with-desc">
+                            <h3>旧滑走路 (Runway 15/33) 風速ベクトル</h3>
+                            <p class="desc">旧空港の滑走路方位に合わせたリアルタイム横風・向かい風の分解情報</p>
+                        </div>
+                        <span class="badge" id="val-surface-condition">DRY</span>
+                    </div>
+                    <div class="runway-visualizer-container">
+                        <canvas id="runway-canvas"></canvas>
+                    </div>
+                    <div class="runway-stats">
+                        <div class="stat-box headwind">
+                            <span class="stat-label">対地風成分 (Headwind)</span>
+                            <div class="stat-value-group">
+                                <span id="val-headwind" class="stat-number">--.-</span>
+                                <span class="stat-unit">m/s</span>
+                            </div>
+                            <span id="val-headwind-dir" class="stat-sub">向かい風</span>
+                        </div>
+                        <div class="stat-box crosswind">
+                            <span class="stat-label">横風成分 (Crosswind)</span>
+                            <div class="stat-value-group">
+                                <span id="val-crosswind" class="stat-number">--.-</span>
+                                <span class="stat-unit">m/s</span>
+                            </div>
+                            <span id="val-crosswind-side" class="stat-sub">左からの横風</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3-Hour Forecast Graph Card -->
+                <div class="card glass-card graph-card">
+                    <div class="card-header graph-header">
+                        <div class="title-with-desc">
+                            <h3>局所超高性能 3時間トレンド予測</h3>
+                            <p class="desc">1分単位解像度の高精度マイクロシミュレーション予測グラフ (計180点)</p>
+                        </div>
+                        <!-- Graph Controls -->
+                        <div class="graph-tabs">
+                            <button class="tab-btn active" data-graph="temp">気温・湿度</button>
+                            <button class="tab-btn" data-graph="wind">風速・突風</button>
+                            <button class="tab-btn" data-graph="precip">降水量・視程</button>
+                            <button class="tab-btn" data-graph="drone">ドローン適性</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="forecast-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Interactive Timeline Slider (Row 3) -->
+            <section class="card glass-card timeline-card">
+                <div class="timeline-header">
+                    <div class="slider-title">
+                        <i data-lucide="sliders" class="text-neon inline-icon"></i>
+                        <span>インタラクティブ・予測タイムラインシライダー</span>
+                    </div>
+                    <div class="selected-time-bubble">
+                        <span>選択時刻:</span>
+                        <strong id="val-timeline-time">現在 (14:56)</strong>
+                        <span class="offset-label" id="val-timeline-offset">+0分先</span>
+                    </div>
+                </div>
+                
+                <div class="slider-wrapper">
+                    <input type="range" id="timeline-slider" min="0" max="180" value="0" step="1" class="custom-range-slider">
+                    <div class="slider-ticks">
+                        <span class="tick active" data-val="0">現在</span>
+                        <span class="tick" data-val="30">+30分</span>
+                        <span class="tick" data-val="60">+1時間</span>
+                        <span class="tick" data-val="90">+1.5時間</span>
+                        <span class="tick" data-val="120">+2時間</span>
+                        <span class="tick" data-val="150">+2.5時間</span>
+                        <span class="tick" data-val="180">+3時間先</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Microclimate Diagnostics & Alerts -->
+            <section class="card glass-card diagnostics-card">
+                <div class="diagnostics-header">
+                    <div class="diagnostic-title">
+                        <i data-lucide="activity" class="text-neon inline-icon animate-pulse"></i>
+                        <span>局所的気象診断・マイクロクライメート解析</span>
+                    </div>
+                    <span class="updated-time-label">予測モデル更新: <span id="val-model-updated-time">14:56:00</span></span>
+                </div>
+                <div class="diagnostics-body">
+                    <div class="diagnostic-item main-alert">
+                        <div class="diag-icon-box" id="diag-alert-level-box">
+                            <i data-lucide="info" id="diag-alert-icon"></i>
+                        </div>
+                        <div class="diag-text">
+                            <h4 id="diag-title">局所診断を計算中...</h4>
+                            <p id="diag-desc">白浜沿岸部からの湿った空気と旧滑走路の標高90m丘陵地の熱力学的相互作用を解析しています。</p>
+                        </div>
+                    </div>
+                    <div class="mini-metrics-grid">
+                        <div class="metric-item">
+                            <span class="m-label">滑走路表面熱</span>
+                            <span class="m-value" id="val-runway-temp">--.- °C</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="m-label">海陸風循環</span>
+                            <span class="m-value" id="val-breeze-type">--風</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="m-label">突風リスク</span>
+                            <span class="m-value" id="val-gust-risk">--</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="m-label">サーマル到達高度</span>
+                            <span class="m-value" id="val-thermal-height">--- m</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="app-footer">
+            <p>© 2026 南紀白浜マイクロクライメート技術研究所. All Rights Reserved. (Simulation Sandbox Engine v2.4)</p>
+            <p class="disclaimer">※本アプリは旧南紀白浜空港跡地でのラジコン・ドローンフライトおよび観光用気象分析に特化した実験的超高解像度シミュレーションデータを提供しています。</p>
+        </footer>
+    </div>
+
+    <!-- Script Files -->
+    <script src="canvas-weather.js"></script>
+    <script src="runway-visualizer.js"></script>
+    <script src="app.js"></script>
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>
