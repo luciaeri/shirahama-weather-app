@@ -3,283 +3,715 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>旧南紀白浜空港 局所的超高性能天気予報 (1分更新/3時間予測)</title>
-    <!-- Google Fonts -->
+    <title>SOLARIS ATMOS — ソーラーカー特化型 超高性能天気ポータル</title>
+    <meta name="description" content="白浜・神戸対応。ソーラーカー向け太陽光発電効率・走行戦略をリアルタイムで最適化する超高級天気ポータル。Gemini AI搭載。">
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Lucide Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Custom Style Sheet -->
+    <!-- Styles -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Background Canvas for Weather Effects -->
-    <canvas id="weather-effect-canvas"></canvas>
 
-    <div class="app-container">
-        <!-- Header Section -->
-        <header class="app-header">
-            <div class="header-main">
-                <div class="logo-area">
-                    <div class="logo-icon-wrapper">
-                        <i data-lucide="plane-takeoff" class="logo-icon text-neon"></i>
-                    </div>
-                    <div>
-                        <h1>SHIRAHAMA MICRO-WEATHER</h1>
-                        <p class="subtitle">旧南紀白浜空港 (滑走路方位 15/33) 局所気象ダッシュボード</p>
-                    </div>
-                </div>
-                <div class="system-status">
-                    <div class="status-badge live">
-                        <span class="pulse-dot"></span>
-                        <span id="update-mode-text">1分自動更新中</span>
-                    </div>
-                    <div class="geo-info">
-                        <i data-lucide="map-pin" class="inline-icon"></i>
-                        <span>北緯33.6622° 東経135.3621° / 標高90m</span>
-                    </div>
-                </div>
+<!-- Background Canvas -->
+<canvas id="weather-effect-canvas"></canvas>
+
+<!-- ===== NAVIGATION BAR ===== -->
+<nav class="nav-bar" id="nav-bar">
+    <a class="nav-brand" href="#">
+        <div class="nav-brand-icon">
+            <i data-lucide="sun"></i>
+        </div>
+        <span class="nav-brand-text">Solaris Atmos</span>
+    </a>
+    <div class="nav-links">
+        <button class="nav-link active" data-section="hero" onclick="scrollToSection('hero')">ホーム</button>
+        <button class="nav-link" data-section="solar" onclick="scrollToSection('solar-section')">ソーラー</button>
+        <button class="nav-link" data-section="strategy" onclick="scrollToSection('strategy-section')">走行戦略</button>
+        <button class="nav-link" data-section="weather" onclick="scrollToSection('weather-section')">気象</button>
+        <button class="nav-link" data-section="forecast" onclick="scrollToSection('forecast-section')">予測</button>
+    </div>
+    <div class="nav-actions">
+        <button class="btn-icon" id="btn-settings" title="ソーラーカー設定">
+            <i data-lucide="settings"></i>
+        </button>
+    </div>
+</nav>
+
+<div class="app-container">
+
+    <!-- ===== HERO SECTION ===== -->
+    <section class="hero-section" id="hero">
+        <span class="hero-eyebrow">SOLAR CAR WEATHER INTELLIGENCE</span>
+        <div class="hero-main-value" id="hero-power-value">0<span style="font-size:0.3em; font-weight:400; opacity:0.6;">W</span></div>
+        <div class="hero-unit">リアルタイム推定発電量</div>
+        <p class="hero-subtitle">
+            Open-Meteo天気API × 1分解像度シミュレーション × Gemini AI<br>
+            ソーラーカーチームのための究極の気象戦略ポータル
+        </p>
+        <div class="city-tabs" id="city-tabs">
+            <button class="city-tab active" data-city="shirahama" onclick="switchCity('shirahama')">
+                ☀️ 白浜
+            </button>
+            <button class="city-tab" data-city="kobe" onclick="switchCity('kobe')">
+                🏙️ 神戸
+            </button>
+        </div>
+        <div class="scroll-indicator">
+            <span>Scroll</span>
+            <div class="scroll-line"></div>
+        </div>
+    </section>
+
+    <!-- ===== STATUS BAR ===== -->
+    <div class="status-bar scroll-reveal" id="status-bar">
+        <div class="status-left">
+            <div class="status-badge live">
+                <span class="pulse-dot"></span>
+                <span id="update-mode-text">1分自動更新中</span>
             </div>
-            <div class="header-meta">
-                <div class="live-clock">
-                    <i data-lucide="clock" class="inline-icon"></i>
-                    <span id="current-time-display">2026-05-26 14:56:34</span>
-                </div>
-                <button id="btn-refresh" class="btn-primary" title="最新データ取得">
-                    <i data-lucide="refresh-cw" id="refresh-icon"></i>
-                    <span>手動更新</span>
-                </button>
+            <div class="status-badge solar">
+                <i data-lucide="sun" class="inline-icon"></i>
+                <span id="solar-status-text">日射データ取得中...</span>
             </div>
-        </header>
-
-        <!-- Main Dashboard Layout -->
-        <main class="dashboard-grid">
-            
-            <!-- Weather Parameter Cards (Row 1) -->
-            <section class="overview-cards">
-                <!-- Temperature Card -->
-                <div class="card glass-card card-temp">
-                    <div class="card-header">
-                        <span class="card-title">気温・湿度</span>
-                        <i data-lucide="thermometer" class="icon-temp"></i>
-                    </div>
-                    <div class="card-body">
-                        <div class="value-display">
-                            <span id="val-temp" class="main-val">--.-</span>
-                            <span class="unit">°C</span>
-                        </div>
-                        <div class="card-footer">
-                            <span class="sub-label">湿度: <span id="val-humidity">--</span>%</span>
-                            <span class="sub-label">露点: <span id="val-dewpoint">--.-</span>°C</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Wind Card -->
-                <div class="card glass-card card-wind">
-                    <div class="card-header">
-                        <span class="card-title">風向・風速</span>
-                        <i data-lucide="wind" class="icon-wind"></i>
-                    </div>
-                    <div class="card-body">
-                        <div class="value-display">
-                            <span id="val-windspeed" class="main-val">--.-</span>
-                            <span class="unit">m/s</span>
-                        </div>
-                        <div class="wind-direction-wrap">
-                            <i data-lucide="navigation" id="wind-direction-arrow" class="wind-arrow"></i>
-                            <span id="val-winddir-text" class="sub-val">-- (---°)</span>
-                        </div>
-                        <div class="card-footer">
-                            <span class="sub-label alert-val">瞬間最大: <span id="val-windgust">--.-</span> m/s</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Precipitation/Visibility Card -->
-                <div class="card glass-card card-precip">
-                    <div class="card-header">
-                        <span class="card-title">降水・視程</span>
-                        <i data-lucide="cloud-rain" class="icon-precip"></i>
-                    </div>
-                    <div class="card-body">
-                        <div class="value-display">
-                            <span id="val-precip" class="main-val">-.--</span>
-                            <span class="unit">mm/分</span>
-                        </div>
-                        <div class="card-footer-stacked">
-                            <div class="stacked-item">
-                                <span>気圧: <span id="val-pressure">----</span> hPa</span>
-                            </div>
-                            <div class="stacked-item">
-                                <span>滑走路視程 (RVR): <span id="val-rvr">----</span> m</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Drone/Aviation Suitability Card -->
-                <div class="card glass-card card-drone">
-                    <div class="card-header">
-                        <span class="card-title">フライト安全指数</span>
-                        <i data-lucide="shield-alert" id="icon-drone-safety" class="icon-drone"></i>
-                    </div>
-                    <div class="card-body">
-                        <div class="drone-safety-badge" id="val-drone-status-badge">
-                            <span id="val-drone-status">測定中</span>
-                        </div>
-                        <div class="card-footer-stacked">
-                            <div class="stacked-item">
-                                <span>熱上昇気流 (サーマル): <span id="val-thermal">--.-</span> m/s</span>
-                            </div>
-                            <div class="stacked-item">
-                                <span>乱気流レベル: <span id="val-turbulence">--</span></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Visualizations and Graphs (Row 2) -->
-            <section class="visualizer-grid">
-                <!-- Runway Crosswind Visualizer Card -->
-                <div class="card glass-card visualizer-card">
-                    <div class="card-header">
-                        <div class="title-with-desc">
-                            <h3>旧滑走路 (Runway 15/33) 風速ベクトル</h3>
-                            <p class="desc">旧空港の滑走路方位に合わせたリアルタイム横風・向かい風の分解情報</p>
-                        </div>
-                        <span class="badge" id="val-surface-condition">DRY</span>
-                    </div>
-                    <div class="runway-visualizer-container">
-                        <canvas id="runway-canvas"></canvas>
-                    </div>
-                    <div class="runway-stats">
-                        <div class="stat-box headwind">
-                            <span class="stat-label">対地風成分 (Headwind)</span>
-                            <div class="stat-value-group">
-                                <span id="val-headwind" class="stat-number">--.-</span>
-                                <span class="stat-unit">m/s</span>
-                            </div>
-                            <span id="val-headwind-dir" class="stat-sub">向かい風</span>
-                        </div>
-                        <div class="stat-box crosswind">
-                            <span class="stat-label">横風成分 (Crosswind)</span>
-                            <div class="stat-value-group">
-                                <span id="val-crosswind" class="stat-number">--.-</span>
-                                <span class="stat-unit">m/s</span>
-                            </div>
-                            <span id="val-crosswind-side" class="stat-sub">左からの横風</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3-Hour Forecast Graph Card -->
-                <div class="card glass-card graph-card">
-                    <div class="card-header graph-header">
-                        <div class="title-with-desc">
-                            <h3>局所超高性能 3時間トレンド予測</h3>
-                            <p class="desc">1分単位解像度の高精度マイクロシミュレーション予測グラフ (計180点)</p>
-                        </div>
-                        <!-- Graph Controls -->
-                        <div class="graph-tabs">
-                            <button class="tab-btn active" data-graph="temp">気温・湿度</button>
-                            <button class="tab-btn" data-graph="wind">風速・突風</button>
-                            <button class="tab-btn" data-graph="precip">降水量・視程</button>
-                            <button class="tab-btn" data-graph="drone">ドローン適性</button>
-                        </div>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="forecast-chart"></canvas>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Interactive Timeline Slider (Row 3) -->
-            <section class="card glass-card timeline-card">
-                <div class="timeline-header">
-                    <div class="slider-title">
-                        <i data-lucide="sliders" class="text-neon inline-icon"></i>
-                        <span>インタラクティブ・予測タイムラインシライダー</span>
-                    </div>
-                    <div class="selected-time-bubble">
-                        <span>選択時刻:</span>
-                        <strong id="val-timeline-time">現在 (14:56)</strong>
-                        <span class="offset-label" id="val-timeline-offset">+0分先</span>
-                    </div>
-                </div>
-                
-                <div class="slider-wrapper">
-                    <input type="range" id="timeline-slider" min="0" max="180" value="0" step="1" class="custom-range-slider">
-                    <div class="slider-ticks">
-                        <span class="tick active" data-val="0">現在</span>
-                        <span class="tick" data-val="30">+30分</span>
-                        <span class="tick" data-val="60">+1時間</span>
-                        <span class="tick" data-val="90">+1.5時間</span>
-                        <span class="tick" data-val="120">+2時間</span>
-                        <span class="tick" data-val="150">+2.5時間</span>
-                        <span class="tick" data-val="180">+3時間先</span>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Microclimate Diagnostics & Alerts -->
-            <section class="card glass-card diagnostics-card">
-                <div class="diagnostics-header">
-                    <div class="diagnostic-title">
-                        <i data-lucide="activity" class="text-neon inline-icon animate-pulse"></i>
-                        <span>局所的気象診断・マイクロクライメート解析</span>
-                    </div>
-                    <span class="updated-time-label">予測モデル更新: <span id="val-model-updated-time">14:56:00</span></span>
-                </div>
-                <div class="diagnostics-body">
-                    <div class="diagnostic-item main-alert">
-                        <div class="diag-icon-box" id="diag-alert-level-box">
-                            <i data-lucide="info" id="diag-alert-icon"></i>
-                        </div>
-                        <div class="diag-text">
-                            <h4 id="diag-title">局所診断を計算中...</h4>
-                            <p id="diag-desc">白浜沿岸部からの湿った空気と旧滑走路の標高90m丘陵地の熱力学的相互作用を解析しています。</p>
-                        </div>
-                    </div>
-                    <div class="mini-metrics-grid">
-                        <div class="metric-item">
-                            <span class="m-label">滑走路表面熱</span>
-                            <span class="m-value" id="val-runway-temp">--.- °C</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="m-label">海陸風循環</span>
-                            <span class="m-value" id="val-breeze-type">--風</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="m-label">突風リスク</span>
-                            <span class="m-value" id="val-gust-risk">--</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="m-label">サーマル到達高度</span>
-                            <span class="m-value" id="val-thermal-height">--- m</span>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <footer class="app-footer">
-            <p>© 2026 南紀白浜マイクロクライメート技術研究所. All Rights Reserved. (Simulation Sandbox Engine v2.4)</p>
-            <p class="disclaimer">※本アプリは旧南紀白浜空港跡地でのラジコン・ドローンフライトおよび観光用気象分析に特化した実験的超高解像度シミュレーションデータを提供しています。</p>
-        </footer>
+            <div class="geo-info">
+                <i data-lucide="map-pin" class="inline-icon"></i>
+                <span id="geo-info-text">北緯33.6622° 東経135.3621° / 標高90m</span>
+            </div>
+        </div>
+        <div class="status-right">
+            <div class="live-clock">
+                <i data-lucide="clock" class="inline-icon"></i>
+                <span id="current-time-display">--:--:--</span>
+            </div>
+            <button id="btn-refresh" class="btn-primary" title="最新データ取得">
+                <i data-lucide="refresh-cw" id="refresh-icon"></i>
+                <span>手動更新</span>
+            </button>
+        </div>
     </div>
 
-    <!-- Script Files -->
-    <script src="canvas-weather.js"></script>
-    <script src="runway-visualizer.js"></script>
-    <script src="app.js"></script>
-    <script>
-        // Initialize Lucide Icons
-        lucide.createIcons();
-    </script>
+    <!-- ===== SOLAR ENERGY DASHBOARD ===== -->
+    <section id="solar-section" class="scroll-reveal">
+        <div class="section-header">
+            <div class="section-icon solar">
+                <i data-lucide="sun"></i>
+            </div>
+            <div>
+                <h2 class="section-title">ソーラーエネルギー</h2>
+                <p class="section-subtitle">リアルタイム日射量 & パネル発電効率</p>
+            </div>
+        </div>
+
+        <!-- Solar Power Hero -->
+        <div class="card card-solar card-premium" style="margin-bottom: 16px;">
+            <div class="solar-power-hero">
+                <div class="solar-hero-gauge">
+                    <svg class="gauge-svg" viewBox="0 0 200 200">
+                        <circle class="gauge-bg" cx="100" cy="100" r="85" />
+                        <circle class="gauge-fill solar" id="solar-gauge-fill" cx="100" cy="100" r="85"
+                            stroke-dasharray="534" stroke-dashoffset="534" />
+                    </svg>
+                    <div class="gauge-center">
+                        <div class="gauge-value text-gold" id="gauge-efficiency">0%</div>
+                        <div class="gauge-label">パネル効率</div>
+                    </div>
+                </div>
+                <div class="solar-hero-info">
+                    <div class="solar-hero-watts">
+                        <span id="hero-panel-watts">0</span>
+                        <span class="watts-unit">W</span>
+                    </div>
+                    <div class="solar-hero-label">推定パネル出力</div>
+                    <div class="solar-stats-row">
+                        <div class="solar-stat">
+                            <span class="solar-stat-val text-gold" id="val-cell-temp">--</span>
+                            <span class="solar-stat-label">セル温度 °C</span>
+                        </div>
+                        <div class="solar-stat">
+                            <span class="solar-stat-val" id="val-temp-correction">--</span>
+                            <span class="solar-stat-label">温度補正</span>
+                        </div>
+                        <div class="solar-stat">
+                            <span class="solar-stat-val" id="val-cumulative-wh">0</span>
+                            <span class="solar-stat-label">累積 Wh</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Solar Data Cards -->
+        <div class="solar-grid">
+            <!-- GHI Card -->
+            <div class="card card-solar">
+                <div class="card-header">
+                    <span class="card-title">全天日射量 (GHI)</span>
+                    <i data-lucide="sun" class="text-gold"></i>
+                </div>
+                <div class="card-body">
+                    <div class="value-display">
+                        <span id="val-ghi" class="main-val gold">--</span>
+                        <span class="unit">W/m²</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <span class="sub-label">全方向からの合計日射量</span>
+                </div>
+            </div>
+            <!-- DNI Card -->
+            <div class="card card-solar">
+                <div class="card-header">
+                    <span class="card-title">直達日射量 (DNI)</span>
+                    <i data-lucide="target" class="text-gold"></i>
+                </div>
+                <div class="card-body">
+                    <div class="value-display">
+                        <span id="val-dni" class="main-val gold">--</span>
+                        <span class="unit">W/m²</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <span class="sub-label">太陽から直接のビーム放射</span>
+                </div>
+            </div>
+            <!-- DHI Card -->
+            <div class="card card-solar">
+                <div class="card-header">
+                    <span class="card-title">散乱日射量 (DHI)</span>
+                    <i data-lucide="cloud-sun" class="text-gold"></i>
+                </div>
+                <div class="card-body">
+                    <div class="value-display">
+                        <span id="val-dhi" class="main-val">--</span>
+                        <span class="unit">W/m²</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <span class="sub-label">大気散乱による間接光</span>
+                </div>
+            </div>
+            <!-- Cloud Cover Card -->
+            <div class="card card-solar">
+                <div class="card-header">
+                    <span class="card-title">雲量</span>
+                    <i data-lucide="cloud" class="text-blue"></i>
+                </div>
+                <div class="card-body">
+                    <div class="value-display">
+                        <span id="val-cloud-cover" class="main-val">--</span>
+                        <span class="unit">%</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <span class="sub-label">発電効率への直接影響</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== SUN PATH & POSITION ===== -->
+    <section class="scroll-reveal">
+        <div class="sun-path-section">
+            <div class="card card-solar">
+                <div class="card-header">
+                    <span class="card-title">太陽軌道 (Sun Path)</span>
+                    <i data-lucide="orbit"></i>
+                </div>
+                <div class="sun-path-canvas-wrap">
+                    <canvas id="sun-path-canvas"></canvas>
+                    <div class="sun-data-overlay">
+                        <div class="sun-data-item">
+                            <span class="val" id="val-sun-altitude">--°</span>
+                            <span class="lbl">高度角</span>
+                        </div>
+                        <div class="sun-data-item">
+                            <span class="val" id="val-sun-azimuth">--°</span>
+                            <span class="lbl">方位角</span>
+                        </div>
+                        <div class="sun-data-item">
+                            <span class="val" id="val-sunrise">--:--</span>
+                            <span class="lbl">日の出</span>
+                        </div>
+                        <div class="sun-data-item">
+                            <span class="val" id="val-sunset">--:--</span>
+                            <span class="lbl">日の入</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card card-solar">
+                <div class="card-header">
+                    <span class="card-title">ソーラーハーベスト予測</span>
+                    <i data-lucide="battery-charging" class="text-gold"></i>
+                </div>
+                <div class="chart-container" style="height: 200px;">
+                    <canvas id="solar-harvest-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== SOLAR CAR STRATEGY ===== -->
+    <section id="strategy-section" class="scroll-reveal">
+        <div class="section-header">
+            <div class="section-icon strategy">
+                <i data-lucide="gauge"></i>
+            </div>
+            <div>
+                <h2 class="section-title">走行戦略</h2>
+                <p class="section-subtitle">エネルギー収支シミュレーション & 最適速度レコメンド</p>
+            </div>
+        </div>
+
+        <div class="strategy-grid">
+            <!-- Optimal Speed -->
+            <div class="card card-premium">
+                <div class="card-header">
+                    <span class="card-title">最適走行速度</span>
+                    <i data-lucide="zap" class="text-green"></i>
+                </div>
+                <div class="optimal-speed-display">
+                    <div class="gauge-container">
+                        <svg class="gauge-svg" viewBox="0 0 200 200">
+                            <circle class="gauge-bg" cx="100" cy="100" r="85" />
+                            <circle class="gauge-fill speed" id="speed-gauge-fill" cx="100" cy="100" r="85"
+                                stroke-dasharray="534" stroke-dashoffset="534" />
+                        </svg>
+                        <div class="gauge-center">
+                            <div class="gauge-value text-green" id="val-optimal-speed">--</div>
+                            <div class="gauge-label">km/h</div>
+                        </div>
+                    </div>
+                    <p class="optimal-speed-label">バッテリー消費ゼロで走行可能な最高速度</p>
+                </div>
+            </div>
+
+            <!-- Energy Balance -->
+            <div class="card card-premium">
+                <div class="card-header">
+                    <span class="card-title">エネルギー収支</span>
+                    <i data-lucide="activity" class="text-gold"></i>
+                </div>
+                <div class="card-body">
+                    <div class="energy-balance-bar">
+                        <span class="sub-label">ソーラー入力</span>
+                        <div class="balance-track">
+                            <div class="balance-fill positive" id="balance-input-fill" style="width: 0%;"></div>
+                        </div>
+                        <span class="balance-label positive" id="val-energy-input">0 W</span>
+                    </div>
+                    <div class="energy-balance-bar">
+                        <span class="sub-label">走行消費</span>
+                        <div class="balance-track">
+                            <div class="balance-fill negative" id="balance-consume-fill" style="width: 0%;"></div>
+                        </div>
+                        <span class="balance-label negative" id="val-energy-consume">0 W</span>
+                    </div>
+                    <div class="energy-balance-bar" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.04);">
+                        <span class="sub-label" style="font-weight: 600;">収支</span>
+                        <div class="balance-track">
+                            <div class="balance-fill" id="balance-net-fill" style="width: 0%;"></div>
+                        </div>
+                        <span class="balance-label" id="val-energy-net">0 W</span>
+                    </div>
+
+                    <div class="speed-slider-container">
+                        <div class="speed-slider-label">
+                            <span>シミュレーション速度</span>
+                            <span id="speed-slider-value">80 km/h</span>
+                        </div>
+                        <input type="range" id="speed-slider" min="20" max="130" value="80" step="1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wind Energy Cost -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">風のエネルギーコスト</span>
+                    <i data-lucide="wind"></i>
+                </div>
+                <div class="card-body">
+                    <div class="runway-data">
+                        <div class="runway-data-row">
+                            <span class="label">向かい風/追い風</span>
+                            <span class="value" id="val-wind-energy-headtail">-- W</span>
+                        </div>
+                        <div class="runway-data-row">
+                            <span class="label">横風追加抵抗</span>
+                            <span class="value" id="val-wind-energy-cross">-- W</span>
+                        </div>
+                        <div class="runway-data-row">
+                            <span class="label">空気密度 ρ</span>
+                            <span class="value" id="val-air-density">-- kg/m³</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Road / Tire Conditions -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">路面 & タイヤコンディション</span>
+                    <i data-lucide="thermometer-sun"></i>
+                </div>
+                <div class="card-body">
+                    <div class="runway-data">
+                        <div class="runway-data-row">
+                            <span class="label">路面温度</span>
+                            <span class="value" id="val-road-temp">-- °C</span>
+                        </div>
+                        <div class="runway-data-row">
+                            <span class="label">路面状態</span>
+                            <span class="value"><span class="badge" id="val-road-condition">--</span></span>
+                        </div>
+                        <div class="runway-data-row">
+                            <span class="label">タイヤリスク</span>
+                            <span class="value" id="val-tire-risk">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== WEATHER DASHBOARD ===== -->
+    <section id="weather-section" class="scroll-reveal">
+        <div class="section-header">
+            <div class="section-icon weather">
+                <i data-lucide="cloud-sun-rain"></i>
+            </div>
+            <div>
+                <h2 class="section-title">気象ダッシュボード</h2>
+                <p class="section-subtitle" id="weather-city-label">白浜 — 旧南紀白浜空港 局所気象</p>
+            </div>
+        </div>
+
+        <div class="overview-cards">
+            <!-- Temperature -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">気温・湿度</span>
+                    <i data-lucide="thermometer"></i>
+                </div>
+                <div class="card-body">
+                    <div class="value-display">
+                        <span id="val-temp" class="main-val">--.-</span>
+                        <span class="unit">°C</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <span class="sub-label">湿度: <span id="val-humidity">--</span>%</span>
+                    <span class="sub-label">露点: <span id="val-dewpoint">--</span>°C</span>
+                </div>
+            </div>
+
+            <!-- Wind -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">風速・風向</span>
+                    <i data-lucide="wind"></i>
+                </div>
+                <div class="card-body">
+                    <div class="value-display">
+                        <span id="val-windspeed" class="main-val blue">--.-</span>
+                        <span class="unit">m/s</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <span class="sub-label">突風: <span id="val-windgust">--</span> m/s</span>
+                    <span class="sub-label" id="val-winddir-text">-- (--°)</span>
+                </div>
+            </div>
+
+            <!-- Precipitation -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">降水量・視程</span>
+                    <i data-lucide="cloud-rain"></i>
+                </div>
+                <div class="card-body">
+                    <div class="value-display">
+                        <span id="val-precip" class="main-val">--</span>
+                        <span class="unit">mm/min</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <span class="sub-label">RVR: <span id="val-rvr">--</span>m</span>
+                    <span class="sub-label">気圧: <span id="val-pressure">--</span>hPa</span>
+                </div>
+            </div>
+
+            <!-- Flight Safety -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">フライト安全指数</span>
+                    <i data-lucide="shield-check" id="icon-drone-safety"></i>
+                </div>
+                <div class="card-body">
+                    <div id="val-drone-status-badge" class="drone-safety-badge safe">
+                        <i data-lucide="shield-check" class="icon-drone"></i>
+                        <span id="val-drone-status">-- (Score: --)</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <span class="sub-label">サーマル: <span id="val-thermal">--</span> m/s</span>
+                    <span class="sub-label">乱気流: <span id="val-turbulence">--</span></span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== RUNWAY VISUALIZER ===== -->
+    <section class="scroll-reveal">
+        <div class="runway-section">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title" id="runway-title">滑走路 15/33 風況</span>
+                    <i data-lucide="plane"></i>
+                </div>
+                <div class="runway-canvas-wrap">
+                    <canvas id="runway-canvas"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">滑走路コンポーネント分析</span>
+                    <i data-lucide="split"></i>
+                </div>
+                <div class="card-body">
+                    <div class="runway-data">
+                        <div class="runway-data-row">
+                            <span class="label">向かい風/追い風</span>
+                            <span class="value"><span id="val-headwind">--</span> m/s <span class="sub-label" id="val-headwind-dir">(--)</span></span>
+                        </div>
+                        <div class="runway-data-row">
+                            <span class="label">横風</span>
+                            <span class="value"><span id="val-crosswind">--</span> m/s <span class="sub-label" id="val-crosswind-side">(--)</span></span>
+                        </div>
+                        <div class="runway-data-row">
+                            <span class="label">路面状態</span>
+                            <span class="value"><span class="badge" id="val-surface-condition">--</span></span>
+                        </div>
+                        <div class="runway-data-row">
+                            <span class="label">滑走路表面温度</span>
+                            <span class="value" id="val-runway-temp">-- °C</span>
+                        </div>
+                        <div class="runway-data-row">
+                            <span class="label">海陸風循環</span>
+                            <span class="value" id="val-breeze-type">--</span>
+                        </div>
+                        <div class="runway-data-row">
+                            <span class="label">突風リスク</span>
+                            <span class="value" id="val-gust-risk">--</span>
+                        </div>
+                        <div class="runway-data-row">
+                            <span class="label">サーマル到達高度</span>
+                            <span class="value" id="val-thermal-height">-- m</span>
+                        </div>
+                        <div class="runway-data-row">
+                            <span class="label">モデル最終更新</span>
+                            <span class="value" id="val-model-updated-time">--:--:--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== DIAGNOSTICS ===== -->
+    <section class="scroll-reveal">
+        <div class="card diag-card" id="diag-alert-level-box">
+            <div class="diag-icon-box level-safe" id="diag-alert-icon-box">
+                <i data-lucide="info" id="diag-alert-icon"></i>
+            </div>
+            <div class="diag-content">
+                <h3 class="diag-title" id="diag-title">データ取得中...</h3>
+                <p class="diag-desc" id="diag-desc">天気データを解析しています。しばらくお待ちください。</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== FORECAST CHART ===== -->
+    <section id="forecast-section" class="scroll-reveal">
+        <div class="card chart-section">
+            <div class="card-header">
+                <span class="card-title">3時間予測 (1分解像度)</span>
+                <i data-lucide="trending-up"></i>
+            </div>
+            <div class="chart-tabs">
+                <button class="tab-btn active" data-graph="solar">☀️ ソーラー</button>
+                <button class="tab-btn" data-graph="temp">🌡️ 気温</button>
+                <button class="tab-btn" data-graph="wind">🌬️ 風速</button>
+                <button class="tab-btn" data-graph="precip">🌧️ 降水量</button>
+                <button class="tab-btn" data-graph="strategy">🏎️ 走行戦略</button>
+            </div>
+            <div class="chart-container">
+                <canvas id="forecast-chart"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== TIMELINE SLIDER ===== -->
+    <section class="scroll-reveal">
+        <div class="card timeline-section">
+            <div class="timeline-header">
+                <div>
+                    <div class="card-title">タイムライン</div>
+                    <div class="timeline-time" id="val-timeline-time">現在</div>
+                </div>
+                <div class="timeline-offset" id="val-timeline-offset">+0分先</div>
+            </div>
+            <input type="range" id="timeline-slider" min="0" max="180" value="0" step="1">
+            <div class="slider-ticks">
+                <span class="tick active" data-val="0">現在</span>
+                <span class="tick" data-val="30">+30分</span>
+                <span class="tick" data-val="60">+1時間</span>
+                <span class="tick" data-val="90">+1.5時間</span>
+                <span class="tick" data-val="120">+2時間</span>
+                <span class="tick" data-val="150">+2.5時間</span>
+                <span class="tick" data-val="180">+3時間</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== AI WEATHER SUMMARIES ===== -->
+    <section class="scroll-reveal">
+        <div class="section-header">
+            <div class="section-icon" style="background: linear-gradient(135deg, rgba(196,113,245,0.12), rgba(196,113,245,0.03)); border: 1px solid rgba(196,113,245,0.2); color: #c471f5;">
+                <i data-lucide="sparkles"></i>
+            </div>
+            <div>
+                <h2 class="section-title">AI ソーラー戦略サマリー</h2>
+                <p class="section-subtitle">Gemini AIが1時間ごとに自動生成する天気・走行戦略</p>
+            </div>
+        </div>
+        <div class="ai-summary-grid">
+            <div class="card ai-summary-card">
+                <div class="ai-badge">
+                    <i data-lucide="sparkles"></i>
+                    <span>AI生成 — 白浜</span>
+                </div>
+                <div class="ai-summary-text" id="ai-summary-shirahama">
+                    Gemini APIキーを設定するとAIサマリーが自動生成されます。右上の ⚙️ 設定から入力してください。
+                </div>
+                <div class="ai-summary-meta" id="ai-summary-shirahama-meta">最終更新: --</div>
+            </div>
+            <div class="card ai-summary-card">
+                <div class="ai-badge">
+                    <i data-lucide="sparkles"></i>
+                    <span>AI生成 — 神戸</span>
+                </div>
+                <div class="ai-summary-text" id="ai-summary-kobe">
+                    Gemini APIキーを設定するとAIサマリーが自動生成されます。右上の ⚙️ 設定から入力してください。
+                </div>
+                <div class="ai-summary-meta" id="ai-summary-kobe-meta">最終更新: --</div>
+            </div>
+        </div>
+    </section>
+
+</div><!-- /app-container -->
+
+<!-- ===== FLOATING AI CHATBOT ===== -->
+<button class="chat-fab" id="chat-fab" title="AI ソーラーストラテジスト">
+    <i data-lucide="bot"></i>
+</button>
+
+<div class="chat-panel" id="chat-panel">
+    <div class="chat-header">
+        <div class="chat-header-title">
+            <i data-lucide="sparkles"></i>
+            <span>SOLARIS AI ストラテジスト</span>
+        </div>
+        <button class="chat-close" id="chat-close">
+            <i data-lucide="x"></i>
+        </button>
+    </div>
+    <div class="chat-messages" id="chat-messages">
+        <div class="chat-msg ai">
+            こんにちは！SOLARIS AIストラテジストです。☀️<br>
+            天気・ソーラー発電・走行戦略について何でもお聞きください。<br>
+            <span style="font-size:0.75rem; color: var(--text-muted);">例: 「今白浜でどれくらい発電できる？」</span>
+        </div>
+    </div>
+    <div class="chat-input-area">
+        <button class="chat-voice" id="chat-voice" title="音声入力">
+            <i data-lucide="mic"></i>
+        </button>
+        <input type="text" class="chat-input" id="chat-input" placeholder="質問を入力..." autocomplete="off">
+        <button class="chat-send" id="chat-send" title="送信">
+            <i data-lucide="send"></i>
+        </button>
+    </div>
+</div>
+
+<!-- ===== SETTINGS PANEL ===== -->
+<div class="settings-overlay" id="settings-overlay"></div>
+<div class="settings-panel" id="settings-panel">
+    <div class="settings-header">
+        <h2 class="settings-title">⚙️ ソーラーカー設定</h2>
+        <button class="settings-close" id="settings-close">
+            <i data-lucide="x"></i>
+        </button>
+    </div>
+
+    <div class="settings-group">
+        <div class="settings-group-title">☀️ ソーラーパネル</div>
+        <div class="setting-row">
+            <span class="setting-label">パネル面積 (m²)</span>
+            <input type="number" class="setting-input" id="cfg-panel-area" value="4.0" step="0.1" min="0.5" max="10">
+        </div>
+        <div class="setting-row">
+            <span class="setting-label">パネル効率 (%)</span>
+            <input type="number" class="setting-input" id="cfg-panel-efficiency" value="24.0" step="0.1" min="5" max="50">
+        </div>
+    </div>
+
+    <div class="settings-group">
+        <div class="settings-group-title">🏎️ 車両スペック</div>
+        <div class="setting-row">
+            <span class="setting-label">空気抵抗係数 Cd</span>
+            <input type="number" class="setting-input" id="cfg-cd" value="0.11" step="0.01" min="0.05" max="0.5">
+        </div>
+        <div class="setting-row">
+            <span class="setting-label">前面投影面積 A (m²)</span>
+            <input type="number" class="setting-input" id="cfg-frontal-area" value="1.2" step="0.1" min="0.5" max="3">
+        </div>
+        <div class="setting-row">
+            <span class="setting-label">車両重量 (kg)</span>
+            <input type="number" class="setting-input" id="cfg-weight" value="250" step="10" min="100" max="1000">
+        </div>
+        <div class="setting-row">
+            <span class="setting-label">転がり抵抗係数 Crr</span>
+            <input type="number" class="setting-input" id="cfg-crr" value="0.006" step="0.001" min="0.001" max="0.05">
+        </div>
+    </div>
+
+    <div class="settings-group">
+        <div class="settings-group-title">🤖 Gemini API</div>
+        <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+            <span class="setting-label">API キー</span>
+            <input type="password" class="setting-input api-key-input" id="cfg-gemini-key" placeholder="AIza..." style="width: 100%; text-align: left;">
+        </div>
+    </div>
+
+    <button class="btn-primary" style="width: 100%; justify-content: center; margin-top: 16px;" id="btn-save-settings">
+        <i data-lucide="save"></i>
+        <span>設定を保存</span>
+    </button>
+</div>
+
+<!-- Scripts -->
+<script src="canvas-weather.js"></script>
+<script src="runway-visualizer.js"></script>
+<script src="gemini-ai.js"></script>
+<script src="app.js"></script>
+
 </body>
 </html>
